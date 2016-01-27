@@ -2,8 +2,8 @@
 
 ## repo default configuration
 ##
-REPO_URL = 'https://gerrit.googlesource.com/git-repo'
-REPO_REV = 'stable'
+REPO_URL = 'https://github.com/GatorQue/git-reflow'
+REPO_REV = 'master'
 
 # Copyright (C) 2008 Google Inc.
 #
@@ -23,8 +23,40 @@ REPO_REV = 'stable'
 VERSION = (1, 22)
 
 # increment this if the MAINTAINER_KEYS block is modified
-KEYRING_VERSION = (1, 2)
+KEYRING_VERSION = (1, 3)
 MAINTAINER_KEYS = """
+
+     Ryan Lindeman <ryanlindeman@gmail.com>
+-----BEGIN PGP PUBLIC KEY BLOCK-----
+Version: GnuPG v1
+
+mQENBFaoNYsBCADGzWlRt4ytmK5QCscTfXQ3L0KxMVKgStGH8Pf+dRFL48iwdWvg
+bbQFMPXpQRYMD8hW0r7rgoRFdifwm1DlS8snHQ0m8r6arQnjazKd3bMu0RqBAYAh
+TX09/qw4p17n7LV9gE14VWc/OVcJEzK/iSa1WCnUWiOAc/sNTWT9rDbeElrLz2P9
+QnDSROIybgbYECbmWd/A8Ofq1XxasgWCZ9BynBg3bXF1JGCpZKURuqFHmNIynbcp
+BXTgE3dyZ0XrfcclhZl3GlbkRoPG3zVrfFScJhHtkjGpHEjqEpPmN/jdY8pc3BNE
+1tgqukkKR0ugaHdjLvjoEo+8ShjOC//W5j9LABEBAAG0JlJ5YW4gTGluZGVtYW4g
+PHJ5YW5saW5kZW1hbkBnbWFpbC5jb20+iQE4BBMBAgAiBQJWqDWLAhsDBgsJCAcD
+AgYVCAIJCgsEFgIDAQIeAQIXgAAKCRBbLwETT2pK8J1NCAChE7uXuo1cbGLVCgbm
+340Bg7RJFlkuTLpiVwI2SlKWjLDKCmOJsYVCw2Q4QZKhafaT81DLhz/1wQgL/bmC
+y6CLaXt08P+AN5tX31aiRXC2aMUZ1dvcCi8yyq4mniKZEVjjt72qtp7b2P7IYHqj
+Of3ftEgQe8PQau1AfKBHQNrcCieSqHODB4CqISd9hOONUketzRBcIB3btguagOyy
+tzw++ZyIw1KR1y1Q8JBSf7pjHac1vqF/Y8HqG/HThkQ4c0C4QIVl7Bsq5QjANa3w
+fpNtvxVgaNcbJpayHneiSaBW79ECSkfd1dL13q/1R6gjndc/sSyJo2eyMcrgqLLp
+o4DvuQENBFaoNYsBCADYKOX0RwXqlSyctsnvkTgfn3Qr3T2F9RzzMwq5FAvGnqDe
+Z0wvnMz7G6CpSpssq/TWgiJuezfggOp+OASNaxflbhsxG081CbijMEU79rfCEAdJ
+Amt5gEwKQ+RY+Pexd0Ud96HHT3kxe1lAuhBQzuF27+oCCeWb61v6D+RxqPcab7tb
+LVbWLpVlqye4g/2ysq9/E1JzHdCfJ2E/iSPPprjSBrO5Bu4iaDwudKPUm96rBQYU
+qgaHa4r0+ItbzScIV0vqij8J6NUIoEy+i2CmGEmfTtdltXAW9LYRtr2jdnWi/jLZ
+wkO42rlzpQ96HeinwMPXvFgAYBTVuHKtAcTpx/IrABEBAAGJAR8EGAECAAkFAlao
+NYsCGwwACgkQWy8BE09qSvCY4wgAtKQG/Uemp9Qv54Bhp8a71feiBDNHHOnpZvJA
+mUhCq2UcYA1kmie7KBwScgHHgi6ALXroFGAqC6SX3cBNN0efval8u7QW6Iew6wbs
+DE8O4NRn4VQiriZ2LjcG4lq1H35WYRp5QduMCF8Nm/4QIGvh7oYxg2+G81go6Ltb
+FzwnPdc7ZdZfdi/d6bJuQ7BjxA5AO3GeUwp0PqXpMOlB+2igYDsion0Dv61pxDkl
+dasiRdkmpJyZ/I/jzRWZrk7PfdXazPSUTKu5tS29zNdpAj/PI0uKoYl05fyecGnC
+phbHiK9pl1LxR6GrnIS/eiUpZV7N9iZrzzZF5Y6PMhBGL5q6sQ==
+=H16U
+-----END PGP PUBLIC KEY BLOCK-----
 
      Repo Maintainer <repo@android.kernel.org>
 -----BEGIN PGP PUBLIC KEY BLOCK-----
