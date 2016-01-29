@@ -31,7 +31,7 @@ following DTD:
 
     <!ELEMENT notice (#PCDATA)>
 
-    <!ELEMENT remote (EMPTY)>
+    <!ELEMENT remote (flow?)>
     <!ATTLIST remote name         ID    #REQUIRED>
     <!ATTLIST remote alias        CDATA #IMPLIED>
     <!ATTLIST remote fetch        CDATA #REQUIRED>
@@ -51,6 +51,7 @@ following DTD:
 
     <!ELEMENT project (annotation*,
                        project*,
+                       flow?,
                        copyfile?,
                        linkfile?)>
     <!ATTLIST project name        CDATA #REQUIRED>
@@ -73,6 +74,21 @@ following DTD:
     <!ELEMENT copyfile (EMPTY)>
     <!ATTLIST src value  CDATA #REQUIRED>
     <!ATTLIST dest value CDATA #REQUIRED>
+
+    <!ELEMENT flow (branch?,
+                    prefix?)>
+    <!ATTLIST flow prefix_all value CDATA #IMPLIED>
+
+    <!ELEMENT branch (EMPTY)>
+    <!ATTLIST branch master  value CDATA #REQUIRED>
+    <!ATTLIST branch develop value CDATA #REQUIRED>
+
+    <!ELEMENT prefix (EMPTY)>
+    <!ATTLIST prefix feature    value CDATA #REQUIRED>
+    <!ATTLIST prefix release    value CDATA #REQUIRED>
+    <!ATTLIST prefix hotfix     value CDATA #REQUIRED>
+    <!ATTLIST prefix support    value CDATA #REQUIRED>
+    <!ATTLIST prefix versiontag value CDATA #IMPLIED>
 
     <!ELEMENT linkfile (EMPTY)>
     <!ATTLIST src value  CDATA #REQUIRED>
@@ -303,6 +319,49 @@ project element. Each element describes a src-dest pair of files;
 the "src" file will be copied to the "dest" place during 'repo sync'
 command.
 "src" is project relative, "dest" is relative to the top of the tree.
+
+Element flow
+----------------
+
+At most one flow element may be specified. It may be defined under
+remote or project levels where the project level overrides anything
+defined at the remote level.
+
+Attribute `prefix_all`: Optional string to be added to the branch and
+prefix values provided.
+
+Element branch
+----------------
+
+At most one branch element may be specified under the flow element.
+
+Attribute `develop`: Required string defining the branch name to deliver
+feature branches to. This branch represents the destination for most
+development efforts as described by the git flow documentation.
+
+Attribute `master`: Required string defining the branch name to deliver
+release and hotfix branches to. Support branches will also be based from
+this branch as described by the git flow documentation.
+
+Element prefix
+----------------
+
+At most one prefix element may be specified under the flow element.
+
+Attribute `feature`: Required string defining the feature branch prefix
+to apply for each feature branch created.
+
+Attribute `release`: Required string defining the release branch prefix
+to apply for each release branch created.
+
+Attribute `hotfix`: Required string defining the hotfix branch prefix
+to apply for each hotfix branch created.
+
+Attribute `support`: Required string defining the support branch prefix
+to apply for each support branch created.
+
+Attribute `versiontag`: Optional string defining the version tag prefix
+to apply for each version tag created during a release.
 
 Element linkfile
 ----------------

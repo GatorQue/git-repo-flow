@@ -32,7 +32,7 @@ else:
 import gitc_utils
 from git_config import GitConfig
 from git_refs import R_HEADS, HEAD
-from project import RemoteSpec, Project, MetaProject
+from project import Flow, RemoteSpec, Project, MetaProject
 from error import ManifestParseError, ManifestInvalidRevisionError
 
 MANIFEST_FILE_NAME = 'manifest.xml'
@@ -74,6 +74,7 @@ class _XmlRemote(object):
     self.reviewUrl = review
     self.revision = revision
     self.resolvedFetchUrl = self._resolveFetchUrl()
+    self.flow = None
 
   def __eq__(self, other):
     return self.__dict__ == other.__dict__
@@ -96,6 +97,21 @@ class _XmlRemote(object):
     else:
       url = urllib.parse.urljoin(manifestUrl, url)
     return url
+
+  def AddFlow(self, prefix_all):
+    self.flow = Flow(prefix_all)
+
+  def AddBranch(self, develop, master):
+    if not self.flow is None:
+      self.flow.AddBranch(develop, master)
+    else:
+      raise
+
+  def AddPrefix(self, feature, release, hotfix, support, versiontag):
+    if not self.flow is None:
+      self.flow.AddPrefix(feature, release, hotfix, support, versiontag)
+    else:
+      raise
 
   def ToRemoteSpec(self, projectName):
     url = self.resolvedFetchUrl.rstrip('/') + '/' + projectName
@@ -634,7 +650,7 @@ class XmlManifest(object):
     name = self._reqatt(node, 'name')
     alias = node.getAttribute('alias')
     if alias == '':
-      alias = None
+      alias = 'origin'
     fetch = self._reqatt(node, 'fetch')
     review = node.getAttribute('review')
     if review == '':
@@ -643,7 +659,11 @@ class XmlManifest(object):
     if revision == '':
       revision = None
     manifestUrl = self.manifestProject.config.GetString('remote.origin.url')
-    return _XmlRemote(name, alias, fetch, manifestUrl, review, revision)
+    remote = _XmlRemote(name, alias, fetch, manifestUrl, review, revision)
+    for n in node.childNodes:
+      if n.nodeName == 'flow':
+        self._ParseFlow(remote, n)
+    return remote
 
   def _ParseDefault(self, node):
     """
@@ -818,10 +838,14 @@ class XmlManifest(object):
                       parent = parent,
                       dest_branch = dest_branch,
                       **extra_proj_attrs)
+    # Start with flow value defined by remote (if any)
+    project.flow = remote.flow
 
     for n in node.childNodes:
       if n.nodeName == 'copyfile':
         self._ParseCopyFile(project, n)
+      if n.nodeName == 'flow':
+        self._ParseFlow(project, n)
       if n.nodeName == 'linkfile':
         self._ParseLinkFile(project, n)
       if n.nodeName == 'annotation':
@@ -872,6 +896,38 @@ class XmlManifest(object):
       # src is project relative;
       # dest is relative to the top of the tree
       project.AddCopyFile(src, dest, os.path.join(self.topdir, dest))
+
+  def _ParseFlow(self, obj, node):
+    prefix_all = node.getAttribute('prefix_all')
+    if prefix_all == '':
+      prefix_all = ""
+
+    if not self.IsMirror:
+      obj.AddFlow(prefix_all)
+
+    # Search for optional branch or prefix sub-elements
+    for n in node.childNodes:
+      if n.nodeName == 'branch':
+        self._ParseBranch(obj, n)
+      if n.nodeName == 'prefix':
+        self._ParsePrefix(obj, n)
+
+  def _ParseBranch(self, obj, node):
+    develop = self._reqatt(node, 'develop')
+    master = self._reqatt(node, 'master')
+    if not self.IsMirror:
+      obj.AddBranch(develop, master)
+
+  def _ParsePrefix(self, obj, node):
+    feature = self._reqatt(node, 'feature')
+    release = self._reqatt(node, 'release')
+    hotfix = self._reqatt(node, 'hotfix')
+    support = self._reqatt(node, 'support')
+    versiontag = node.getAttribute('versiontag')
+    if versiontag == '':
+        versiontag = ""
+    if not self.IsMirror:
+      obj.AddPrefix(feature, release, hotfix, support, versiontag)
 
   def _ParseLinkFile(self, project, node):
     src = self._reqatt(node, 'src')
