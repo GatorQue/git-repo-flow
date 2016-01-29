@@ -1520,6 +1520,14 @@ class Project(object):
       return True
     return False
 
+  def Pull(self):
+    """Pulls the currently checked out branch.
+    """
+    return GitCommand(self,
+                      ['pull'],
+                      capture_stdout=True,
+                      capture_stderr=True).Wait() == 0
+
   def CheckoutBranch(self, name):
     """Checkout a local topic branch.
 
