@@ -90,6 +90,16 @@ class Info(PagedCommand):
       self.heading("Project: ")
       self.headtext(p.name)
       self.out.nl()
+      if p.flow:
+        self.heading("Git-flow: ")
+        self.headtext("branch("+p.flow.prefix_all+p.flow.branch_develop+",")
+        self.headtext(p.flow.prefix_all+p.flow.branch_master+"), prefix(")
+        self.headtext(p.flow.prefix_all+p.flow.prefix_feature+",")
+        self.headtext(p.flow.prefix_all+p.flow.prefix_release+",")
+        self.headtext(p.flow.prefix_all+p.flow.prefix_hotfix+",")
+        self.headtext(p.flow.prefix_all+p.flow.prefix_support+",tag:'")
+        self.headtext(p.flow.prefix_versiontag+"')")
+        self.out.nl()
 
       self.heading("Mount path: ")
       self.headtext(p.worktree)

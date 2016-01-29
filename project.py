@@ -236,6 +236,28 @@ class _CopyFile(object):
       except IOError:
         _error('Cannot copy file %s to %s', src, dest)
 
+class Flow(object):
+  def __init__(self, prefix_all):
+    self.prefix_all = prefix_all
+    self.branch_develop = "develop"
+    self.branch_master = "master"
+    self.prefix_feature = "feature/"
+    self.prefix_release = "release/"
+    self.prefix_hotfix = "hotfix/"
+    self.prefix_support = "support/"
+    self.prefix_versiontag = ""
+
+  def AddBranch(self, develop, master):
+    self.branch_develop = develop
+    self.branch_master = master
+
+  def AddPrefix(self, feature, release, hotfix, support, versiontag):
+    self.prefix_feature = feature
+    self.prefix_release = release
+    self.prefix_hotfix = hotfix
+    self.prefix_support = support
+    self.prefix_versiontag = versiontag
+
 class _LinkFile(object):
   def __init__(self, git_worktree, src, dest, relsrc, absdest):
     self.git_worktree = git_worktree
@@ -631,6 +653,7 @@ class Project(object):
 
     self.snapshots = {}
     self.copyfiles = []
+    self.flow = None
     self.linkfiles = []
     self.annotations = []
     self.config = GitConfig.ForRepository(
@@ -1404,6 +1427,21 @@ class Project(object):
     # make src an absolute path
     abssrc = os.path.join(self.worktree, src)
     self.copyfiles.append(_CopyFile(src, dest, abssrc, absdest))
+
+  def AddFlow(self, prefix_all):
+    self.flow = Flow(prefix_all)
+
+  def AddBranch(self, develop, master):
+    if not self.flow is None:
+      self.flow.AddBranch(develop, master)
+    else:
+      raise
+
+  def AddPrefix(self, feature, release, hotfix, support, versiontag):
+    if not self.flow is None:
+      self.flow.AddPrefix(feature, release, hotfix, support, versiontag)
+    else:
+      raise
 
   def AddLinkFile(self, src, dest, absdest):
     # dest should already be an absolute path, but src is project relative
@@ -2203,6 +2241,21 @@ class Project(object):
           self.config.SetString('core.bare', 'true')
         else:
           self.config.SetString('core.bare', None)
+        if self.flow:
+          self.config.SetString('gitflow.branch.master',
+                                self.flow.prefix_all+self.flow.branch_master)
+          self.config.SetString('gitflow.branch.develop',
+                                self.flow.prefix_all+self.flow.branch_develop)
+          self.config.SetString('gitflow.prefix.feature',
+                                self.flow.prefix_all+self.flow.prefix_feature)
+          self.config.SetString('gitflow.prefix.release',
+                                self.flow.prefix_all+self.flow.prefix_release)
+          self.config.SetString('gitflow.prefix.hotfix',
+                                self.flow.prefix_all+self.flow.prefix_hotfix)
+          self.config.SetString('gitflow.prefix.support',
+                                self.flow.prefix_all+self.flow.prefix_support)
+          self.config.SetString('gitflow.prefix.versiontag',
+                                self.flow.prefix_versiontag)
     except Exception:
       if init_obj_dir and os.path.exists(self.objdir):
         shutil.rmtree(self.objdir)
