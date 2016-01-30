@@ -13,83 +13,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-import os
-import sys
+from subcmds import sync
 
-from command import Command
-from git_config import IsId
-from git_command import git
-import gitc_utils
-from progress import Progress
-from project import SyncBuffer
-
-class Pull(Command):
+class Pull(sync.Sync):
   common = True
-  helpSummary = "Fetch from and integrate with remote or a local branches"
+  helpSummary = "Update working tree to the latest revision (branches are checked out or merged)"
   helpUsage = """
-%prog [--all | <project>...]
+%prog [<project>...]
 """
   helpDescription = """
-'%prog' incorporates changes from the remote repositories into the current branches.
-Projects that do not have a branch checked out are skipped.
-"""
+The '%prog' command is similar to the 'repo sync' command, but branches are
+checked out and merged if the project 'revision' specifies a branch. 
+   
+""" + sync.Sync.helpDescription.replace("rebase any new local changes\non top of", "merge any new local changes with")
 
-  def _Options(self, p):
-    p.add_option('--all',
-                 dest='all', action='store_true',
-                 help='pull in all projects')
-
-  def Execute(self, opt, args):
-
-    err = []
-    projects = []
-    if not opt.all:
-      projects = args
-      if len(projects) < 1:
-        print("error: at least one project must be specified", file=sys.stderr)
-        sys.exit(1)
-
-    if self.gitc_manifest:
-      all_projects = self.GetProjects(projects, manifest=self.gitc_manifest,
-                                      missing_ok=True)
-      for project in all_projects:
-        if project.old_revision:
-          project.already_synced = True
-        else:
-          project.already_synced = False
-          project.old_revision = project.revisionExpr
-        project.revisionExpr = None
-      # Save the GITC manifest.
-      gitc_utils.save_manifest(self.gitc_manifest)
-
-    all_projects = self.GetProjects(projects,
-                                    missing_ok=bool(self.gitc_manifest))
-
-    pm = Progress('Pulling', len(all_projects))
-    for project in all_projects:
-      pm.update()
-
-      if self.gitc_manifest:
-        gitc_project = self.gitc_manifest.paths[project.relpath]
-        # Pull projects that have not been opened.
-        if not gitc_project.already_synced:
-          proj_localdir = os.path.join(self.gitc_manifest.gitc_client_dir,
-                                       project.relpath)
-          project.worktree = proj_localdir
-          if not os.path.exists(proj_localdir):
-            os.makedirs(proj_localdir)
-          project.Sync_NetworkHalf()
-          sync_buf = SyncBuffer(self.manifest.manifestProject.config)
-          project.Sync_LocalHalf(sync_buf)
-          project.revisionId = gitc_project.old_revision
-
-      if not project.Pull():
-        err.append(project)
-    pm.end()
-
-    if err:
-      for p in err:
-        print("error: %s/: cannot pull" % p.relpath,
-              file=sys.stderr)
-      sys.exit(1)
+  def __init__(self):
+    super(Pull,self).__init__(mergeDontRebase=True,
+                              checkoutBranches=True)

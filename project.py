@@ -1279,7 +1279,7 @@ class Project(object):
         'revision %s in %s not found' % (self.revisionExpr,
                                          self.name))
 
-  def Sync_LocalHalf(self, syncbuf, force_sync=False):
+  def Sync_LocalHalf(self, syncbuf, force_sync=False, mergeDontRebase=False):
     """Perform only the local IO portion of the sync process.
        Network access is not required.
     """
@@ -1424,7 +1424,14 @@ class Project(object):
         branch.merge = R_HEADS + branch.merge
     branch.Save()
 
-    if cnt_mine > 0 and self.rebase:
+    if cnt_mine > 0 and mergeDontRebase:
+      def _domerge():
+        rem = self.GetRemote(self.remote.name)
+        rev = rem.ToLocal(self.revisionExpr)
+        self._Merge(rev)
+        self._CopyAndLinkFiles()
+      syncbuf.later2(self, _domerge)
+    elif cnt_mine > 0 and self.rebase:
       def _dorebase():
         self._Rebase(upstream='%s^1' % last_mine, onto=revid)
         self._CopyAndLinkFiles()
@@ -2193,6 +2200,11 @@ class Project(object):
     cmd.append(rev)
     if GitCommand(self, cmd).Wait() != 0:
       raise GitError('%s reset --hard %s ' % (self.name, rev))
+
+  def _Merge(self, revid):
+    cmd = ['merge', revid]
+    if GitCommand(self, cmd).Wait() != 0:
+      raise GitError('%s merge %s ' % (self.name, revid))
 
   def _Rebase(self, upstream, onto=None):
     cmd = ['rebase']
