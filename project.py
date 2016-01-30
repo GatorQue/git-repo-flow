@@ -258,6 +258,23 @@ class Flow(object):
     self.prefix_support = support
     self.prefix_versiontag = versiontag
 
+  def SetConfig(self, config, origin):
+    config.SetString('gitflow.branch.master',
+                     self.prefix_all+self.branch_master)
+    config.SetString('gitflow.branch.develop',
+                     self.prefix_all+self.branch_develop)
+    config.SetString('gitflow.prefix.feature',
+                     self.prefix_all+self.prefix_feature)
+    config.SetString('gitflow.prefix.release',
+                     self.prefix_all+self.prefix_release)
+    config.SetString('gitflow.prefix.hotfix',
+                     self.prefix_all+self.prefix_hotfix)
+    config.SetString('gitflow.prefix.support',
+                     self.prefix_all+self.prefix_support)
+    config.SetString('gitflow.prefix.versiontag',
+                     self.prefix_versiontag)
+    config.SetString('gitflow.origin', origin)
+
 class _LinkFile(object):
   def __init__(self, git_worktree, src, dest, relsrc, absdest):
     self.git_worktree = git_worktree
@@ -2258,20 +2275,7 @@ class Project(object):
         else:
           self.config.SetString('core.bare', None)
         if self.flow:
-          self.config.SetString('gitflow.branch.master',
-                                self.flow.prefix_all+self.flow.branch_master)
-          self.config.SetString('gitflow.branch.develop',
-                                self.flow.prefix_all+self.flow.branch_develop)
-          self.config.SetString('gitflow.prefix.feature',
-                                self.flow.prefix_all+self.flow.prefix_feature)
-          self.config.SetString('gitflow.prefix.release',
-                                self.flow.prefix_all+self.flow.prefix_release)
-          self.config.SetString('gitflow.prefix.hotfix',
-                                self.flow.prefix_all+self.flow.prefix_hotfix)
-          self.config.SetString('gitflow.prefix.support',
-                                self.flow.prefix_all+self.flow.prefix_support)
-          self.config.SetString('gitflow.prefix.versiontag',
-                                self.flow.prefix_versiontag)
+          self.flow.SetConfig(self.config, self.remote.name)
     except Exception:
       if init_obj_dir and os.path.exists(self.objdir):
         shutil.rmtree(self.objdir)
