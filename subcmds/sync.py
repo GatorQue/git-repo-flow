@@ -181,8 +181,9 @@ later is required to fix a server side protocol bug.
 
 """
 
-  def __init__(self, mergeDontRebase=False):
+  def __init__(self, mergeDontRebase=False, checkoutBranches=False):
     self.mergeDontRebase = mergeDontRebase
+    self.checkoutBranches = checkoutBranches
 
   def _Options(self, p, show_smart=True):
     try:
@@ -763,6 +764,14 @@ later is required to fix a server side protocol bug.
       pm.update()
       if project.worktree:
         project.Sync_LocalHalf(syncbuf, force_sync=opt.force_sync, mergeDontRebase=self.mergeDontRebase)
+      if self.checkoutBranches:
+        if ID_RE.match(project.revisionExpr):
+          pass
+        elif project.revisionExpr.startswith(R_TAGS):
+          pass
+        elif project.CurrentBranch != project.revisionExpr:
+          project.StartBranch(project.revisionExpr,
+                              branch_merge = project.dest_branch) 
     pm.end()
     print(file=sys.stderr)
     if not syncbuf.Finish():
