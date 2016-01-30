@@ -65,7 +65,7 @@ except ImportError:
   multiprocessing = None
 
 from git_command import GIT, git_require
-from git_config import GetUrlCookieFile
+from git_config import GetUrlCookieFile, ID_RE, R_TAGS
 from git_refs import R_HEADS, HEAD
 import gitc_utils
 from project import Project
@@ -180,6 +180,9 @@ If the remote SSH daemon is Gerrit Code Review, version 2.0.10 or
 later is required to fix a server side protocol bug.
 
 """
+
+  def __init__(self, mergeDontRebase=False):
+    self.mergeDontRebase = mergeDontRebase
 
   def _Options(self, p, show_smart=True):
     try:
@@ -664,7 +667,7 @@ later is required to fix a server side protocol bug.
 
     if mp.HasChanges:
       syncbuf = SyncBuffer(mp.config)
-      mp.Sync_LocalHalf(syncbuf)
+      mp.Sync_LocalHalf(syncbuf, mergeDontRebase=self.mergeDontRebase)
       if not syncbuf.Finish():
         sys.exit(1)
       self._ReloadManifest(manifest_name)
@@ -720,7 +723,7 @@ later is required to fix a server side protocol bug.
       to_fetch.sort(key=self._fetch_times.Get, reverse=True)
 
       fetched = self._Fetch(to_fetch, opt)
-      _PostRepoFetch(rp, opt.no_repo_verify)
+      _PostRepoFetch(rp, opt.no_repo_verify, mergeDontRebase=self.mergeDontRebase)
       if opt.network_only:
         # bail out now; the rest touches the working tree
         return
@@ -759,7 +762,7 @@ later is required to fix a server side protocol bug.
     for project in all_projects:
       pm.update()
       if project.worktree:
-        project.Sync_LocalHalf(syncbuf, force_sync=opt.force_sync)
+        project.Sync_LocalHalf(syncbuf, force_sync=opt.force_sync, mergeDontRebase=self.mergeDontRebase)
     pm.end()
     print(file=sys.stderr)
     if not syncbuf.Finish():
@@ -778,13 +781,13 @@ def _PostRepoUpgrade(manifest, quiet=False):
     if project.Exists:
       project.PostRepoUpgrade()
 
-def _PostRepoFetch(rp, no_repo_verify=False, verbose=False):
+def _PostRepoFetch(rp, no_repo_verify=False, verbose=False, mergeDontRebase=False):
   if rp.HasChanges:
     print('info: A new version of repo is available', file=sys.stderr)
     print(file=sys.stderr)
     if no_repo_verify or _VerifyTag(rp):
       syncbuf = SyncBuffer(rp.config)
-      rp.Sync_LocalHalf(syncbuf)
+      rp.Sync_LocalHalf(syncbuf, mergeDontRebase=mergeDontRebase)
       if not syncbuf.Finish():
         sys.exit(1)
       print('info: Restarting repo with latest version', file=sys.stderr)
