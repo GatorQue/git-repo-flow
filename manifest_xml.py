@@ -650,7 +650,7 @@ class XmlManifest(object):
     name = self._reqatt(node, 'name')
     alias = node.getAttribute('alias')
     if alias == '':
-      alias = 'origin'
+      alias = None
     fetch = self._reqatt(node, 'fetch')
     review = node.getAttribute('review')
     if review == '':

@@ -2,8 +2,8 @@
 
 ## repo default configuration
 ##
-REPO_URL = 'https://github.com/GatorQue/git-reflow'
-REPO_REV = 'master'
+REPO_URL = 'https://github.com/GatorQue/git-repo-flow'
+REPO_REV = 'stable'
 
 # Copyright (C) 2008 Google Inc.
 #
