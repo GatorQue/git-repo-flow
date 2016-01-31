@@ -1,7 +1,7 @@
 #
 # Copyright (C) 2016 Ryan Lindeman
 #
-# Licensed under the Apache License, Version 2.0 (the "License");
+# Licensed under the Apache License, Version 2.0 (the "License;
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
@@ -25,15 +25,58 @@ class Flow(Command):
   common = True
   helpSummary = "Perform git flow commands for all flow enabled projects"
   helpUsage = """
-%prog <flow command> [<flow command arguments>...]
+%prog <subcommand>...
+
+Available sub commands are:
+
+  feature                   Lists all the existing feature branches in the local repository
+  feature start <name>      Start new feature <name>
+  feature finish <name>     Finish feature <name>
+  feature publish <name>    Publish feature branch <name> on origin.
+  feature track <name>      Start tracking feature <name> that is shared on origin
+  feature diff <name>       Show all changes in <name> that are not in <develop>
+  feature checkout <name>   Switch to feature branch <name>
+  feature pull <name>       Pull feature <name> from <remote>
+  feature delete <name>     Delete a given feature branch
+
+  release                   List existing release branches
+  release start <version>   Start a new release branch
+  release finish <version>  Finish a release branch
+  release publish <version> Publish the release branch <version> on origin
+  release track <version>   Start tracking release <version> that is shared on origin
+  release delete <version>  Delete the given release branch
+
+  hotfix                    Lists all local hotfix branches
+  hotfix start <name>       Start new hotfix branch named <version>, optionally base it
+                            on <base> instead of the <master> branch
+  hotfix finish <name>      Finish hotfix branch <version>
+  hotfix publish <name>     Start sharing hotfix <name> on origin
+  hotfix delete <name>      List existing release branches
+
+  hotfix                    Obtain a list of hotfix branches
+  hotfix start <version>    Start a new hotfix
+  hotfix finish <version>   Finish a hotfix
+  hotfix publish <version>  Publish a hotfix
+  hotfix delete <version>   Delete hotfix branch
+
+Experimental sub commands: Use at own risk!
+
+  support                         List all local support branches
+  support start <version> <base>  Start a new support branch name <version> based on <base>
+  
+For more detailed information, refer to the 'git flow' documentation. 
 """
   helpDescription = """
 '%prog' command performs the specified git flow command in each flow enabled
-(which has a <flow> elements in either the project or remote) project.
+project.
+
+A projects is flow enabled if it has a <flow> element definition. The flow element
+definition can either be attached to the <project> element, or inherited from the 
+<remote> element. 
 
 The command is equivalent to:
 
-  repo forall [<flow projects>...] -c git flow <command> <arguments>
+  repo forall [<flow projects>...] -c git flow <subcommand>...
 """
 
   # Override base method so we can disable interspersed arguments and
@@ -57,18 +100,13 @@ The command is equivalent to:
 
     # first argument is the flow subcommand to perform
     cmd_name = args[0]
-    flow_commands = ['help', 'feature', 'release', 'hotfix']
+    flow_commands = ['feature', 'release', 'hotfix', 'support']
 
     # Verify the flow subcommand exists and prepare it for execution
     if not cmd_name in flow_commands:
-      print("repo: '%s' is not a flow subcommand.  See 'repo flow help'." %
+      print("repo: '%s' is not a flow subcommand.  See 'repo help flow'." %
             cmd_name, file=sys.stderr)
       sys.exit(1)
-
-    # Run gitflow help command if command provided is help
-    if cmd_name == 'help':
-      self.help()
-      return
 
     # Add flow before the arguments
     args.insert(0, 'flow')
@@ -91,30 +129,4 @@ The command is equivalent to:
       if p.Wait() != 0:
         print(p.stderr, file=sys.stderr)
         sys.exit(1)
-
-  def help(self):
-    print("Available repo flow subcommands are:")
-    print("  feature    Manage your feature branches.")
-    print("    (none)   Obtain a list of feature branches")
-    print("    start    Start a new feature")
-    print("    finish   Finish a feature")
-    print("    publish  Publish a feature")
-    print("    track    Track a published feature")
-    print("    diff     Show feature differences")
-    print("    checkout Checkout feature")
-    print("    pull     Pull updates")
-    print("    delete   Delete feature branch")
-    print("  release   Manage your release branches.")
-    print("    (none)   Obtain a list of release branches")
-    print("    start    Start a new release")
-    print("    finish   Finish a release")
-    print("    publish  Publish a release")
-    print("    track    Track a published release")
-    print("    delete   Delete release branch")
-    print("  hotfix    Manage your hotfix branches.")
-    print("    (none)   Obtain a list of hotfix branches")
-    print("    start    Start a new hotfix")
-    print("    finish   Finish a hotfix")
-    print("    publish  Publish a hotfix")
-    print("    delete   Delete hotfix branch")
 
