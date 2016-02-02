@@ -123,15 +123,22 @@ The command is equivalent to:
       if project.flow:
         projects.append(project)
 
+        if project.GetBranch(project.flow.branch_master) != None or \
+           project.GetBranch(project.flow.branch_develo) != None:
+          print("error: %s/ missing develop and master branches, run repo flow init" %
+                project.relpath)
+          sys.exit(1)
+
     # Perform command on each project
     for project in projects:
       print("Project: %s/" % project.relpath)
 
       if cmd_name == 'init':
         project.flow.SetConfig(project.config, project.remote.name)
+        project.StartBranch(project.flow.branch_master)
+        project.StartBranch(project.flow.branch_develop)
 
-      p = GitCommand(project, args,
-                     capture_stderr = True)
+      p = GitCommand(project, args, capture_stderr = True)
       if p.Wait() != 0:
         print(p.stderr, file=sys.stderr)
         sys.exit(1)
