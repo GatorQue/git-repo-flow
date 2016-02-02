@@ -29,6 +29,8 @@ class Flow(Command):
 
 Available sub commands are:
 
+  init                      Initialize a new git repo with support for the branching model.
+
   feature                   Lists all the existing feature branches in the local repository
   feature start <name>      Start new feature <name>
   feature finish <name>     Finish feature <name>
@@ -100,7 +102,7 @@ The command is equivalent to:
 
     # first argument is the flow subcommand to perform
     cmd_name = args[0]
-    flow_commands = ['feature', 'release', 'hotfix', 'support']
+    flow_commands = ['init', 'feature', 'release', 'hotfix', 'support']
 
     # Verify the flow subcommand exists and prepare it for execution
     if not cmd_name in flow_commands:
@@ -124,6 +126,10 @@ The command is equivalent to:
     # Perform command on each project
     for project in projects:
       print("Project: %s/" % project.relpath)
+
+      if cmd_name == 'init':
+        project.flow.SetConfig(project.config, project.remote.name)
+
       p = GitCommand(project, args,
                      capture_stderr = True)
       if p.Wait() != 0:
