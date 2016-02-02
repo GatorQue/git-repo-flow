@@ -41,25 +41,18 @@ Available sub commands are:
   feature pull <name>       Pull feature <name> from <remote>
   feature delete <name>     Delete a given feature branch
 
-  release                   List existing release branches
-  release start <version>   Start a new release branch
-  release finish <version>  Finish a release branch
-  release publish <version> Publish the release branch <version> on origin
+  release                   List existing release branches in the local repository
+  release start <version>   Start a new release <version>
+  release finish <version>  Finish a release <version>
+  release publish <version> Publish the release <version> on origin
   release track <version>   Start tracking release <version> that is shared on origin
-  release delete <version>  Delete the given release branch
+  release delete <version>  Delete the given release <version>
 
-  hotfix                    Lists all local hotfix branches
-  hotfix start <name>       Start new hotfix branch named <version>, optionally base it
-                            on <base> instead of the <master> branch
-  hotfix finish <name>      Finish hotfix branch <version>
-  hotfix publish <name>     Start sharing hotfix <name> on origin
-  hotfix delete <name>      List existing release branches
-
-  hotfix                    Obtain a list of hotfix branches
-  hotfix start <version>    Start a new hotfix
-  hotfix finish <version>   Finish a hotfix
-  hotfix publish <version>  Publish a hotfix
-  hotfix delete <version>   Delete hotfix branch
+  hotfix                    Lists all local hotfix branches in the local repository
+  hotfix start <version>    Start a new hotfix <version>
+  hotfix finish <version>   Finish a hotfix <version>
+  hotfix publish <version>  Publish the hotfix <version> on origin
+  hotfix delete <name>      Delete the given release <version>
 
 Experimental sub commands: Use at own risk!
 
