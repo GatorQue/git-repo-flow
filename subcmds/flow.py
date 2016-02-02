@@ -123,8 +123,9 @@ The command is equivalent to:
       if project.flow:
         projects.append(project)
 
-        if project.GetBranch(project.flow.branch_master) != None or \
-           project.GetBranch(project.flow.branch_develo) != None:
+        if (project.GetBranch(project.flow.branch_master) != None or \
+            project.GetBranch(project.flow.branch_develo) != None) and \
+           not cmd_name == 'init':
           print("error: %s/ missing develop and master branches, run repo flow init" %
                 project.relpath)
           sys.exit(1)
