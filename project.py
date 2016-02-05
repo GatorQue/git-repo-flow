@@ -275,6 +275,16 @@ class Flow(object):
                      self.prefix_versiontag)
     config.SetString('gitflow.origin', origin)
 
+  def isIdentical(self, other):
+    return self.prefix_all == other.prefix_all and \
+           self.branch_develop == other.branch_develop and \
+           self.branch_master == other.branch_master and \
+           self.prefix_feature == other.prefix_feature and \
+           self.prefix_release == other.prefix_release and \
+           self.prefix_hotfix == other.prefix_hotfix and \
+           self.prefix_support == other.prefix_support and \
+           self.prefix_versiontag == other.prefix_versiontag
+
 class _LinkFile(object):
   def __init__(self, git_worktree, src, dest, relsrc, absdest):
     self.git_worktree = git_worktree
@@ -336,11 +346,13 @@ class RemoteSpec(object):
                name,
                url=None,
                review=None,
-               revision=None):
+               revision=None,
+               flow=None):
     self.name = name
     self.url = url
     self.review = review
     self.revision = revision
+    self.flow = flow
 
 class RepoHook(object):
   """A RepoHook contains information about a script to run as a hook.

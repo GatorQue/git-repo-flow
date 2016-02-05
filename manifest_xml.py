@@ -113,12 +113,12 @@ class _XmlRemote(object):
     else:
       raise
 
-  def ToRemoteSpec(self, projectName):
+  def ToRemoteSpec(self, projectName, flow = None):
     url = self.resolvedFetchUrl.rstrip('/') + '/' + projectName
     remoteName = self.name
     if self.remoteAlias:
       remoteName = self.remoteAlias
-    return RemoteSpec(remoteName, url, self.reviewUrl)
+    return RemoteSpec(remoteName, url, self.reviewUrl, flow=flow)
 
 class XmlManifest(object):
   """manages the repo configuration file"""
@@ -168,7 +168,7 @@ class XmlManifest(object):
     except OSError as e:
       raise ManifestParseError('cannot link manifest %s: %s' % (name, str(e)))
 
-  def _RemoteToXml(self, r, doc, root):
+  def _RemoteToXml(self, r, doc, root, peg_rev):
     e = doc.createElement('remote')
     root.appendChild(e)
     e.setAttribute('name', r.name)
@@ -179,6 +179,31 @@ class XmlManifest(object):
       e.setAttribute('review', r.reviewUrl)
     if r.revision is not None:
       e.setAttribute('revision', r.revision)
+    if not peg_rev and r.flow is not None:
+      self._FlowToXml(r.flow, doc, e)
+
+  def _FlowToXml(self, flow, doc, root):
+    f = doc.createElement('flow')
+    root.appendChild(f)
+    if flow.prefix_all:
+      f.setAttribute('all_prefix', flow.prefix_all)
+    if flow.branch_develop != 'develop' or flow.branch_master != 'master':
+      b = doc.createElement('branch')
+      f.appendChild(b)
+      b.setAttribute('develop', flow.branch_develop)
+      b.setAttribute('master', flow.branch_master)
+    if flow.prefix_feature != 'feature/' or \
+       flow.prefix_release != 'release/' or \
+       flow.prefix_hotfix != 'hotfix/' or \
+       flow.prefix_support != 'support/' or \
+       flow.prefix_versiontag != '':
+      p = doc.createElement('prefix')
+      f.appendChild(p)
+      p.setAttribute('feature', flow.prefix_feature)
+      p.setAttribute('release', flow.prefix_release)
+      p.setAttribute('hotfix', flow.prefix_hotfix)
+      p.setAttribute('support', flow.prefix_support)
+      p.setAttribute('versiontag', flow.prefix_versiontag)
 
   def _ParseGroups(self, groups):
     return [x for x in re.split(r'[,\s]+', groups) if x]
@@ -209,7 +234,7 @@ class XmlManifest(object):
     d = self.default
 
     for r in sorted(self.remotes):
-      self._RemoteToXml(self.remotes[r], doc, root)
+      self._RemoteToXml(self.remotes[r], doc, root, peg_rev)
     if self.remotes:
       root.appendChild(doc.createTextNode(''))
 
@@ -288,6 +313,13 @@ class XmlManifest(object):
           e.setAttribute('revision', p.revisionExpr)
         if p.upstream and p.upstream != p.revisionExpr:
           e.setAttribute('upstream', p.upstream)
+        # Case 1: Defined only at the project level (root is None) OR
+        # Case 2: Defined at both but project has different flow values
+        if (p.flow is not None and p.remote.flow is None) or \
+           (p.flow is not None and p.remote.flow is not None and \
+            not p.flow.isIdentical(p.remote.flow)):
+          self._FlowToXml(p.flow, doc, e)
+        # Otherwise project inherited its flow values from remote
 
       if p.dest_branch and p.dest_branch != d.destBranchExpr:
         e.setAttribute('dest-branch', p.dest_branch)
@@ -633,7 +665,7 @@ class XmlManifest(object):
       gitdir = os.path.join(self.topdir, '%s.git' % name)
       project = Project(manifest = self,
                         name = name,
-                        remote = remote.ToRemoteSpec(name),
+                        remote = remote.ToRemoteSpec(name, remote.flow),
                         gitdir = gitdir,
                         objdir = gitdir,
                         worktree = None,
@@ -822,7 +854,7 @@ class XmlManifest(object):
 
     project = Project(manifest = self,
                       name = name,
-                      remote = remote.ToRemoteSpec(name),
+                      remote = remote.ToRemoteSpec(name, remote.flow),
                       gitdir = gitdir,
                       objdir = objdir,
                       worktree = worktree,
