@@ -52,6 +52,46 @@ class _Default(object):
   sync_j = 1
   sync_c = False
   sync_s = False
+  manifestFile = None
+
+  def __eq__(self, other):
+    return self.__dict__ == other.__dict__
+
+  def __ne__(self, other):
+    return self.__dict__ != other.__dict__
+
+class _Include(object):
+  """Include file within the manifest."""
+
+  name = None
+  manifestFile = None
+
+  def __eq__(self, other):
+    return self.__dict__ == other.__dict__
+
+  def __ne__(self, other):
+    return self.__dict__ != other.__dict__
+
+class _ExtendProject(object):
+  """Extend project within the manifest."""
+
+  name = None
+  path = None
+  groups = None
+  manifestFile = None
+
+  def __eq__(self, other):
+    return self.__dict__ == other.__dict__
+
+  def __ne__(self, other):
+    return self.__dict__ != other.__dict__
+
+class _RemoveProject(object):
+  """Remove project within the manifest."""
+
+  name = None
+  manifestFile = None
+  projects = None
 
   def __eq__(self, other):
     return self.__dict__ == other.__dict__
@@ -70,6 +110,7 @@ class _XmlRemote(object):
     self.name = name
     self.fetchUrl = fetch
     self.manifestUrl = manifestUrl
+    self.manifestFile = None
     self.remoteAlias = alias
     self.reviewUrl = review
     self.revision = revision
@@ -208,7 +249,8 @@ class XmlManifest(object):
   def _ParseGroups(self, groups):
     return [x for x in re.split(r'[,\s]+', groups) if x]
 
-  def Save(self, fd, peg_rev=False, peg_rev_upstream=True, groups=None):
+  def Save(self, fd, peg_rev=False, peg_rev_upstream=True, groups=None,
+          manifestFile=None):
     """Write the current manifest out to the given file descriptor.
     """
     mp = self.manifestProject
@@ -225,17 +267,19 @@ class XmlManifest(object):
     # Save out the notice.  There's a little bit of work here to give it the
     # right whitespace, which assumes that the notice is automatically indented
     # by 4 by minidom.
-    if self.notice:
+    if self._notice and (manifestFile == None or
+                        manifestFile == self._noticeManifestFile):
       notice_element = root.appendChild(doc.createElement('notice'))
-      notice_lines = self.notice.splitlines()
+      notice_lines = self._notice.splitlines()
       indented_notice = ('\n'.join(" "*4 + line for line in notice_lines))[4:]
       notice_element.appendChild(doc.createTextNode(indented_notice))
 
-    d = self.default
+    d = self._default
 
-    for r in sorted(self.remotes):
-      self._RemoteToXml(self.remotes[r], doc, root, peg_rev)
-    if self.remotes:
+    for r in sorted(self._remotes):
+      if manifestFile == None or manifestFile == self._remotes[r].manifestFile:
+        self._RemoteToXml(self._remotes[r], doc, root, peg_rev)
+    if self._remotes:
       root.appendChild(doc.createTextNode(''))
 
     have_default = False
@@ -258,20 +302,53 @@ class XmlManifest(object):
     if d.sync_s:
       have_default = True
       e.setAttribute('sync-s', 'true')
-    if have_default:
+    if have_default and (manifestFile == None or
+                         manifestFile == self.default.manifestFile):
       root.appendChild(e)
       root.appendChild(doc.createTextNode(''))
 
-    if self._manifest_server:
+    if self._manifest_server and (manifestFile == None or
+                                  manifestFile == self.manifestFile):
       e = doc.createElement('manifest-server')
       e.setAttribute('url', self._manifest_server)
       root.appendChild(e)
       root.appendChild(doc.createTextNode(''))
 
+    have_include = False
+    for i in sorted(self._includes):
+      if i and (manifestFile == None or
+                      manifestFile == self._includes[i].manifestFile):
+        e = doc.createElement('include')
+        e.setAttribute('name', self._includes[i].name)
+        root.appendChild(e)
+        have_include = True
+    if have_include:
+      root.appendChild(doc.createTextNode(''))
+
+    have_remove_project = False
+    for rp in sorted(self._remove_projects):
+      if rp and (manifestFile == None or
+                 manifestFile == self._remove_projects[rp].manifestFile):
+        e = doc.createElement('remove-project')
+        e.setAttribute('name', self._remove_projects[rp].name)
+        root.appendChild(e)
+        have_remove_project = True
+    if have_remove_project:
+      root.appendChild(doc.createTextNode(''))
+
     def output_projects(parent, parent_node, projects):
+      # Resurrect removed projects during Update saves
+      for rp in sorted(self._remove_projects):
+        if rp and manifestFile != None:
+          for project in self._remove_projects[rp].projects:
+            if project != None and project.parent == parent and \
+               manifestFile == project.manifestFile:
+              output_project(parent, parent_node, project)
+
       for project_name in projects:
         for project in self._projects[project_name]:
-          output_project(parent, parent_node, project)
+          if manifestFile == None or manifestFile == project.manifestFile:
+            output_project(parent, parent_node, project)
 
     def output_project(parent, parent_node, p):
       if not p.MatchesGroups(groups):
@@ -308,7 +385,7 @@ class XmlManifest(object):
             # isn't our value
             e.setAttribute('upstream', p.revisionExpr)
       else:
-        revision = self.remotes[remoteName].revision or d.revisionExpr
+        revision = self._remotes[remoteName].revision or d.revisionExpr
         if not revision or revision != p.revisionExpr:
           e.setAttribute('revision', p.revisionExpr)
         if p.upstream and p.upstream != p.revisionExpr:
@@ -338,8 +415,12 @@ class XmlManifest(object):
 
       default_groups = ['all', 'name:%s' % p.name, 'path:%s' % p.relpath]
       egroups = [g for g in p.groups if g not in default_groups]
+      ogroups = [g for g in p.old_groups if g not in default_groups]
       if egroups:
-        e.setAttribute('groups', ','.join(egroups))
+        if manifestFile == None:
+          e.setAttribute('groups', ','.join(egroups))
+        elif ogroups:
+          e.setAttribute('groups', ','.join(ogroups))
 
       for a in p.annotations:
         if a.keep == "true":
@@ -366,15 +447,62 @@ class XmlManifest(object):
     projects = set(p.name for p in self._paths.values() if not p.parent)
     output_projects(None, root, list(sorted(projects)))
 
-    if self._repo_hooks_project:
+    have_extend_project= False
+    for ep in sorted(self._extend_projects):
+      if ep and (manifestFile == None or
+                      manifestFile == self._extend_projects[ep].manifestFile):
+        e = doc.createElement('extend-project')
+        e.setAttribute('name', self._extend_projects[ep].name)
+        if self._extend_projects[ep].path:
+          e.setAttribute('path', self._extend_projects[ep].path)
+        e.setAttribute('groups', ",".join(self._extend_projects[ep].groups))
+        root.appendChild(e)
+        have_extend_project = True
+    if have_extend_project:
+      root.appendChild(doc.createTextNode(''))
+
+    def output_repo_hook(p):
       root.appendChild(doc.createTextNode(''))
       e = doc.createElement('repo-hooks')
-      e.setAttribute('in-project', self._repo_hooks_project.name)
+      e.setAttribute('in-project', p.name)
       e.setAttribute('enabled-list',
-                     ' '.join(self._repo_hooks_project.enabled_repo_hooks))
+                     ' '.join(p.enabled_repo_hooks))
       root.appendChild(e)
 
+    if self._repo_hooks_project and (manifestFile == None or
+            manifestFile == self._repo_hooks_project.manifestFile):
+      output_repo_hook(self._repo_hooks_project)
+    else:
+      # Resurrect removed repo-hooks projects during Update saves
+      for rp in sorted(self._remove_projects):
+        if rp and manifestFile != None:
+          for project in self._remove_projects[rp].projects:
+            if project != None and project.was_repo_hook and \
+               manifestFile == project.manifestFile:
+              output_repo_hook(project)
+
+
     doc.writexml(fd, '', '  ', '\n', 'UTF-8')
+
+  def Update(self, peg_rev=False, peg_rev_upstream=True):
+    # Start with fresh data
+    self._Unload()
+    self._Load()
+
+    # First update the primary manifest file
+    print('Saving to %s' % self.manifestFile)
+    fd = open(self.manifestFile, 'w')
+    self.Save(fd, peg_rev, peg_rev_upstream, manifestFile=self.manifestFile)
+    fd.close()
+
+    # Next update each include file referenced by original manifest file
+    for i in self._includes:
+      manifestFile = os.path.join(self.manifestProject.worktree,
+              self._includes[i].name)
+      print('Saving to %s' % manifestFile)
+      fd = open(manifestFile, 'w')
+      self.Save(fd, peg_rev, peg_rev_upstream, manifestFile=manifestFile)
+      fd.close()
 
   def _output_manifest_project_extras(self, p, e):
     """Manifests can modify e if they support extra project attributes."""
@@ -394,6 +522,21 @@ class XmlManifest(object):
   def remotes(self):
     self._Load()
     return self._remotes
+
+  @property
+  def includes(self):
+    self._Load()
+    return self._includes
+
+  @property
+  def extend_projects(self):
+    self._Load()
+    return self._extend_projects
+
+  @property
+  def remove_projects(self):
+    self._Load()
+    return self._remove_projects
 
   @property
   def default(self):
@@ -428,9 +571,13 @@ class XmlManifest(object):
     self._projects = {}
     self._paths = {}
     self._remotes = {}
+    self._includes = {}
+    self._extend_projects = {}
+    self._remove_projects = {}
     self._default = None
     self._repo_hooks_project = None
     self._notice = None
+    self._noticeManifestFile = None
     self.branch = None
     self._manifest_server = None
 
@@ -511,8 +658,8 @@ class XmlManifest(object):
         except Exception as e:
           raise ManifestParseError(
               "failed parsing included manifest %s: %s", (name, e))
-      else:
-        nodes.append(node)
+      node.manifestFile = path
+      nodes.append(node)
     return nodes
 
   def _ParseManifest(self, node_list):
@@ -529,6 +676,18 @@ class XmlManifest(object):
             self._remotes[remote.name] = remote
 
     for node in itertools.chain(*node_list):
+      if node.nodeName == 'include':
+        include = self._ParseInclude(node)
+        if include:
+          if include.name in self._includes:
+            if include != self._includes[include.name]:
+              raise ManifestParseError(
+                  'include %s already exists with different attributes' %
+                  (include.name))
+          else:
+            self._includes[include.name] = include
+
+    for node in itertools.chain(*node_list):
       if node.nodeName == 'default':
         new_default = self._ParseDefault(node)
         if self._default is None:
@@ -539,6 +698,7 @@ class XmlManifest(object):
 
     if self._default is None:
       self._default = _Default()
+      self._default.manifestFile = node.manifestFile
 
     for node in itertools.chain(*node_list):
       if node.nodeName == 'notice':
@@ -547,6 +707,7 @@ class XmlManifest(object):
               'duplicate notice in %s' %
               (self.manifestFile))
         self._notice = self._ParseNotice(node)
+        self._noticeManifestFile = node.manifestFile
 
     for node in itertools.chain(*node_list):
       if node.nodeName == 'manifest-server':
@@ -570,6 +731,7 @@ class XmlManifest(object):
       self._paths[project.relpath] = project
       projects.append(project)
       for subproject in project.subprojects:
+        subproject.manifestFile = project.manifestFile
         recursively_add_projects(subproject)
 
     for node in itertools.chain(*node_list):
@@ -577,22 +739,15 @@ class XmlManifest(object):
         project = self._ParseProject(node)
         recursively_add_projects(project)
       if node.nodeName == 'extend-project':
-        name = self._reqatt(node, 'name')
-
-        if name not in self._projects:
-          raise ManifestParseError('extend-project element specifies non-existent '
-                                   'project: %s' % name)
-
-        path = node.getAttribute('path')
-        groups = node.getAttribute('groups')
-        if groups:
-          groups = self._ParseGroups(groups)
-
-        for p in self._projects[name]:
-          if path and p.relpath != path:
-            continue
-          if groups:
-            p.groups.extend(groups)
+        extend_project = self._ParseExtendProject(node)
+        if extend_project:
+          if extend_project.name in self._extend_projects:
+            if extend_project != self._extend_projects[extend_project.name]:
+              raise ManifestParseError(
+                  'extend_project %s already exists with different attributes' %
+                  (extend_project.name))
+          else:
+            self._extend_projects[extend_project.name] = extend_project
       if node.nodeName == 'repo-hooks':
         # Get the name of the project and the (space-separated) list of enabled.
         repo_hooks_project = self._reqatt(node, 'in-project')
@@ -622,6 +777,15 @@ class XmlManifest(object):
         self._repo_hooks_project.enabled_repo_hooks = enabled_repo_hooks
       if node.nodeName == 'remove-project':
         name = self._reqatt(node, 'name')
+        remove_project = self._ParseRemoveProject(node)
+        if remove_project:
+          if remove_project.name in self._remove_projects:
+            if remove_project != self._remove_projects[remove_project.name]:
+              raise ManifestParseError(
+                  'remove-project %s already exists with different attributes' %
+                  (remove_project.name))
+          else:
+            self._remove_projects[remove_project.name] = remove_project
 
         if name not in self._projects:
           raise ManifestParseError('remove-project element specifies non-existent '
@@ -629,13 +793,14 @@ class XmlManifest(object):
 
         for p in self._projects[name]:
           del self._paths[p.relpath]
+        remove_project.projects = self._projects[name]
         del self._projects[name]
 
         # If the manifest removes the hooks project, treat it as if it deleted
         # the repo-hooks element too.
         if self._repo_hooks_project and (self._repo_hooks_project.name == name):
+          self._repo_hooks_project.was_repo_hook = True
           self._repo_hooks_project = None
-
 
   def _AddMetaProjectMirror(self, m):
     name = None
@@ -692,16 +857,65 @@ class XmlManifest(object):
       revision = None
     manifestUrl = self.manifestProject.config.GetString('remote.origin.url')
     remote = _XmlRemote(name, alias, fetch, manifestUrl, review, revision)
+    remote.manifestFile = node.manifestFile
     for n in node.childNodes:
       if n.nodeName == 'flow':
         self._ParseFlow(remote, n)
     return remote
+
+  def _ParseInclude(self, node):
+    """
+    reads a <include> element from the manifest file
+    """
+    name = self._reqatt(node, 'name')
+    include = _Include()
+    include.name = name
+    include.manifestFile = node.manifestFile
+    return include
+
+  def _ParseExtendProject(self, node):
+    """
+    reads a <extend-project> element from the manifest file
+    """
+    name = self._reqatt(node, 'name')
+    if name not in self._projects:
+      raise ManifestParseError('extend-project element specifies non-existent '
+                               'project: %s' % name)
+
+    path = node.getAttribute('path')
+    groups = node.getAttribute('groups')
+    if groups:
+      groups = self._ParseGroups(groups)
+
+    for p in self._projects[name]:
+      if path and p.relpath != path:
+        continue
+      if groups:
+        p.groups.extend(groups)
+
+    extend_project = _ExtendProject()
+    extend_project.name = name
+    extend_project.path = path
+    extend_project.groups = groups
+    extend_project.manifestFile = node.manifestFile
+    return extend_project
+
+  def _ParseRemoveProject(self, node):
+    """
+    reads a <remove-project> element from the manifest file
+    """
+    name = self._reqatt(node, 'name')
+    remove_project = _RemoveProject()
+    remove_project.name = name
+    remove_project.manifestFile = node.manifestFile
+    return remove_project
 
   def _ParseDefault(self, node):
     """
     reads a <default> element from the manifest file
     """
     d = _Default()
+    d.manifestFile = node.manifestFile
     d.remote = self._get_remote(node)
     d.revisionExpr = node.getAttribute('revision')
     if d.revisionExpr == '':
@@ -870,6 +1084,7 @@ class XmlManifest(object):
                       parent = parent,
                       dest_branch = dest_branch,
                       **extra_proj_attrs)
+    project.manifestFile = node.manifestFile
     # Start with flow value defined by remote (if any)
     project.flow = remote.flow
 
@@ -883,6 +1098,7 @@ class XmlManifest(object):
       if n.nodeName == 'annotation':
         self._ParseAnnotation(project, n)
       if n.nodeName == 'project':
+        n.manifestFile = node.manifestFile
         project.subprojects.append(self._ParseProject(n, parent = project))
 
     return project

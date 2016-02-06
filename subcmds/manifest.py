@@ -23,7 +23,7 @@ class Manifest(PagedCommand):
   common = False
   helpSummary = "Manifest inspection utility"
   helpUsage = """
-%prog [-o {-|NAME.xml} [-r]]
+%prog [[-o {-|NAME.xml}|-u] [-r]]
 """
   _helpDescription = """
 
@@ -54,6 +54,9 @@ in a Git repository for use during future 'repo init' invocations.
                  help='If in -r mode, do not write the upstream field.  '
                  'Only of use if the branch names for a sha1 manifest are '
                  'sensitive.')
+    p.add_option('-u', '--update-files',
+                 dest='update', action='store_true', default=False,
+                 help='Update files in place to (mostly) preserve existing XML format')
     p.add_option('-o', '--output-file',
                  dest='output_file',
                  default='-',
@@ -72,12 +75,19 @@ in a Git repository for use during future 'repo init' invocations.
     if opt.output_file != '-':
       print('Saved manifest to %s' % opt.output_file, file=sys.stderr)
 
+  def _Update(self, opt):
+    self.manifest.Update(peg_rev = opt.peg_rev,
+                         peg_rev_upstream = opt.peg_rev_upstream)
+
   def Execute(self, opt, args):
     if args:
       self.Usage()
 
-    if opt.output_file is not None:
+    if not opt.update and opt.output_file is not None:
       self._Output(opt)
+      return
+    elif opt.update:
+      self._Update(opt)
       return
 
     print('error: no operation to perform', file=sys.stderr)

@@ -651,6 +651,7 @@ class Project(object):
       old_revision: saved git commit id for open GITC projects.
     """
     self.manifest = manifest
+    self.manifestFile = None
     self.name = name
     self.remote = remote
     self.gitdir = gitdir.replace('\\', '/')
@@ -671,6 +672,10 @@ class Project(object):
 
     self.rebase = rebase
     self.groups = groups
+    if groups:
+      self.old_groups = list(groups)
+    else:
+      self.old_groups = {}
     self.sync_c = sync_c
     self.sync_s = sync_s
     self.clone_depth = clone_depth
@@ -702,6 +707,7 @@ class Project(object):
     # This will be filled in if a project is later identified to be the
     # project containing repo hooks.
     self.enabled_repo_hooks = []
+    self.was_repo_hook = False
 
   @property
   def Derived(self):
