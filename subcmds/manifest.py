@@ -23,7 +23,7 @@ class Manifest(PagedCommand):
   common = False
   helpSummary = "Manifest inspection utility"
   helpUsage = """
-%prog [-o {-|NAME.xml} [-r]]
+%prog [-o {-|NAME.xml} [-r] [-p]]
 """
   _helpDescription = """
 
@@ -59,6 +59,9 @@ in a Git repository for use during future 'repo init' invocations.
                  default='-',
                  help='File to save the manifest to',
                  metavar='-|NAME.xml')
+    p.add_option('-p', '--preserve-formatting',
+                 dest='preserve_formatting', action='store_true',
+                 help='Try to preserve the current manifest formatting and structure')
 
   def _Output(self, opt):
     if opt.output_file == '-':
@@ -67,7 +70,8 @@ in a Git repository for use during future 'repo init' invocations.
       fd = open(opt.output_file, 'w')
     self.manifest.Save(fd,
                        peg_rev = opt.peg_rev,
-                       peg_rev_upstream = opt.peg_rev_upstream)
+                       peg_rev_upstream = opt.peg_rev_upstream,
+                       preserve_formatting = opt.preserve_formatting)
     fd.close()
     if opt.output_file != '-':
       print('Saved manifest to %s' % opt.output_file, file=sys.stderr)

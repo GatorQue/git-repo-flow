@@ -19,6 +19,7 @@ import os
 import re
 import sys
 import xml.dom.minidom
+from lxml import etree
 
 from pyversion import is_python3
 if is_python3():
@@ -208,7 +209,7 @@ class XmlManifest(object):
   def _ParseGroups(self, groups):
     return [x for x in re.split(r'[,\s]+', groups) if x]
 
-  def Save(self, fd, peg_rev=False, peg_rev_upstream=True, groups=None):
+  def Save(self, fd, peg_rev=False, peg_rev_upstream=True, preserve_formatting=False, groups=None):
     """Write the current manifest out to the given file descriptor.
     """
     mp = self.manifestProject
@@ -217,6 +218,9 @@ class XmlManifest(object):
       groups = mp.config.GetString('manifest.groups')
     if groups:
       groups = self._ParseGroups(groups)
+
+    et = etree.parse(self.manifestFile)
+    er = et.getroot()
 
     doc = xml.dom.minidom.Document()
     root = doc.createElement('manifest')
@@ -230,6 +234,8 @@ class XmlManifest(object):
       notice_lines = self.notice.splitlines()
       indented_notice = ('\n'.join(" "*4 + line for line in notice_lines))[4:]
       notice_element.appendChild(doc.createTextNode(indented_notice))
+      for i in er.iter('notice'):
+        i.text = indented_notice
 
     d = self.default
 
@@ -243,21 +249,33 @@ class XmlManifest(object):
     if d.remote:
       have_default = True
       e.setAttribute('remote', d.remote.name)
+      for i in er.iter('default'):
+        i.set('remote', d.remote.name)
     if d.revisionExpr:
       have_default = True
       e.setAttribute('revision', d.revisionExpr)
+      for i in er.iter('default'):
+        i.set('revision', d.revisionExpr)
     if d.destBranchExpr:
       have_default = True
       e.setAttribute('dest-branch', d.destBranchExpr)
+      for i in er.iter('default'):
+        i.set('dest-branch', d.destBranchExpr)
     if d.sync_j > 1:
       have_default = True
       e.setAttribute('sync-j', '%d' % d.sync_j)
+      for i in er.iter('default'):
+        i.set('sync-j', d.sync_j)
     if d.sync_c:
       have_default = True
       e.setAttribute('sync-c', 'true')
+      for i in er.iter('default'):
+        i.set('sync-j', 'true')
     if d.sync_s:
       have_default = True
       e.setAttribute('sync-s', 'true')
+      for i in er.iter('default'):
+        i.set('sync-s', 'true')
     if have_default:
       root.appendChild(e)
       root.appendChild(doc.createTextNode(''))
@@ -374,7 +392,10 @@ class XmlManifest(object):
                      ' '.join(self._repo_hooks_project.enabled_repo_hooks))
       root.appendChild(e)
 
-    doc.writexml(fd, '', '  ', '\n', 'UTF-8')
+    if preserve_formatting:
+      fd.write(etree.tounicode(er))
+    else:
+      doc.writexml(fd, '', '  ', '\n', 'UTF-8')
 
   def _output_manifest_project_extras(self, p, e):
     """Manifests can modify e if they support extra project attributes."""
